@@ -58,6 +58,8 @@ Execute o bot no terminal do ambiente do projeto (o nome é de exemplo, altere o
 ---
 # COMO FUNCIONA?
 Quando o Bot iniciar (roda local)
- Ao executar o bot, ele leva alguns segundos para ser inicializado, se tudo correr bem com a instalação e configuração, ele ficará online e totalmente operacional, basta configurar um chat para ele, e ao digitar !rpt, ele vai conferir todas as permissões e tokens do .env e fará a busca, dependendo do repositório que for, pode levar cerca de 2 a 7minutos, e após isso, ele emitirá uma mensagem de que o relatorio foi feito (atravaes de uma captura de exceção que finaliza a busca ao encontrar todas as issues)
- Ao terminar de gerar os relatorios, basta digitar !resumo para que ele faça os resumos de cada Dev que reportou/fez/abriu/fechou as issues.
- ***Extra:*** !g fucniona como uma I.A propria do gemini, para agilizar ou funções basicas da IA no proprio discord, mais para praticidade.
+ - Ao executar o bot, ele leva alguns segundos para ser inicializado, se tudo correr bem com a instalação e configuração, ele ficará online e totalmente operacional, basta configurar um chat para ele, e ao digitar !rpt, ele vai conferir todas as permissões e tokens do .env e fará a busca, dependendo do repositório que for, pode levar cerca de 2 a 7minutos, e após isso, ele emitirá uma mensagem de que o relatorio foi feito (atravaes de uma captura de exceção que finaliza a busca ao encontrar todas as issues)
+ 
+ - Ao terminar de gerar os relatorios, basta digitar !resumo para que ele faça os resumos de cada Dev que reportou/fez/abriu/fechou as issues.
+ 
+ - ***Extra:*** !g fucniona como uma I.A propria do gemini, para agilizar ou funções basicas da IA no proprio discord, mais para praticidade e agilidade.
