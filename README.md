@@ -24,36 +24,36 @@ Bot do Discord para geração e resumo de relatórios de repositórios GitHub us
 
 ## 🧪 Instalação
 
-1. **Clone o repositório:**
+## 1. **Clone o repositório:**
 
-git clone https://github.com/MatthewNF06/ReportifyBot.git
-cd ReportifyBot
+- git clone https://github.com/MatthewNF06/ReportifyBot.git
+- cd ReportifyBot
 
-2. Crie e ative um ambiente virtual para Rodar o BOT (recomendado seguir a instalação e configuração no ambiente pela Lib do projeto):
+## 2. Crie e ative um ambiente virtual para Rodar o BOT (recomendado seguir a instalação e configuração no ambiente pela Lib do projeto):
 https://pypi.org/project/reportify-ifes/
 Execute o bot no terminal do ambiente do projeto (o nome é de exemplo, altere o nome do arquivo conforme a aplicação):
  python DiscordBot.py
 
 
-3. Instale as dependências(se necessario):
- pip install -r requirements.txt
+## 3. Instale as dependências(se necessario):
+ - pip install -r requirements.txt
  Se não tiver um requirements.txt, crie um com o seguinte conteúdo:
-  discord.py
-  python-dotenv
-  requests
+  - discord.py
+  - python-dotenv
+  - requests
 
-4. Gere um .env com a seguinte ordem de Montagem
+## 4. Gere um .env com a seguinte ordem de Montagem
   API's pro Reportify Funcionar:
-   GITHUB_TOKEN=seu_token_github
-   GITHUB_REPOSITORY=usuario/repositorio
+   - GITHUB_TOKEN=seu_token_github
+   - GITHUB_REPOSITORY=usuario/repositorio
 
   API's pro DiscordBot Funcionar:
-   MY_API_REPORTFY=seu_token_do_bot_discord
-   GEMINI_API_KEY=sua_chave_api_do_gemini
+   - MY_API_REPORTFY=seu_token_do_bot_discord
+   - GEMINI_API_KEY=sua_chave_api_do_gemini
 
-5. Links e Tutoriais adicionais
-  Token do seu bot no Discord (crie em https://discord.com/developers).
-  Chave da API Gemini (pegue em https://makersuite.google.com/app/apikey).
+## 5. Links e Tutoriais adicionais
+  - Token do seu bot no Discord (crie em https://discord.com/developers).
+  - Chave da API Gemini (pegue em https://makersuite.google.com/app/apikey).
 
 ---
 # COMO FUNCIONA?
