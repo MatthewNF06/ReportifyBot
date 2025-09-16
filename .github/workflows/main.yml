@@ -28,4 +28,4 @@ jobs:
           MY_API_REPORTFY: ${{ secrets.DISCORD_BOT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
-        run: python run.py
+        run: python ReportfyBot.py
