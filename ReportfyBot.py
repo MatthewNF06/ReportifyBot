@@ -13,6 +13,8 @@ from reportify import Report
 TOKEN = os.getenv("MY_API_REPORTFY")
 CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GIT_TOKEN = os.getenv("GITHUB_TOKEN")
+GIT_REPOSITORY = os.getenv("REPOSITORIO")
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -112,3 +114,4 @@ async def on_ready():
         await bot.close()
 
 bot.run(TOKEN)
+
