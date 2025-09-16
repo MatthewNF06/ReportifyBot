@@ -3,7 +3,7 @@ name: ReportifyBot Run
 on:
   workflow_dispatch:   # permite rodar manualmente pelo GitHub
   schedule:
-    - cron: "0 12 * * *"   # roda todo dia às 12h UTC (opcional, pode apagar se não quiser agendar)
+    - cron: "0 19 * * *"   # roda todo dia às 12h UTC (opcional, pode apagar se não quiser agendar)
 
 jobs:
   run-bot:
