@@ -74,10 +74,11 @@ async def on_ready():
         await channel.send("🚀 Iniciando geração de relatório...")
 
         # === 1️⃣ Gera relatório ===
-        entradas = ['0', '']
-        with patch('builtins.input', side_effect=lambda _: entradas.pop(0) if entradas else ''):
-            relatorio = Report()
-            relatorio.run()
+        entradas = ['0', '']  # '0' para todos, '' para sair
+        def run_report():
+            with patch('builtins.input', side_effect=lambda _: entradas.pop(0) if entradas else ''):
+                relatorio = Report()
+                relatorio.run()
         await channel.send("📊 Relatório gerado com sucesso!")
 
         # === 2️⃣ Lê os arquivos gerados ===
@@ -114,4 +115,5 @@ async def on_ready():
         await bot.close()
 
 bot.run(TOKEN)
+
 
