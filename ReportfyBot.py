@@ -79,6 +79,8 @@ async def on_ready():
             with patch('builtins.input', side_effect=lambda _: entradas.pop(0) if entradas else ''):
                 relatorio = Report()
                 relatorio.run()
+        
+        await asyncio.to_thread(run_report)
         await channel.send("📊 Relatório gerado com sucesso!")
 
         # === 2️⃣ Lê os arquivos gerados ===
@@ -115,5 +117,6 @@ async def on_ready():
         await bot.close()
 
 bot.run(TOKEN)
+
 
 
