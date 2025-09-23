@@ -11,7 +11,7 @@ from reportify import Report
 
 # Discord
 TOKEN = os.getenv("MY_API_REPORTFY")
-CHANNEL_ID = (os.getenv("DISCORD_CHANNEL_ID"))
+CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 intents = discord.Intents.default()
@@ -67,6 +67,8 @@ def gerar_resposta_gemini(pergunta):
 # Fluxo principal do bot
 @bot.event
 async def on_ready():
+    print(f"Bot conectado como {bot.user}")
+    print(f"Procurando canal ID: {CHANNEL_ID}")
     channel = bot.get_channel(CHANNEL_ID)
     try:
         await channel.send("🚀 Iniciando geração de relatório...")
