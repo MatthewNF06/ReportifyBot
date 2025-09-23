@@ -72,11 +72,13 @@ async def on_ready():
     channel = bot.get_channel(CHANNEL_ID)
     try:
         await channel.send("🚀 Iniciando geração de relatório...")
+        # Obter repositório do ambiente
+        repo = os.getenv("GITHUB_REPOSITORY")
 
         # === 1️⃣ Gera relatório ===
         entradas = ['0', '']
         with patch('builtins.input', side_effect=lambda _: entradas.pop(0) if entradas else ''):
-            relatorio = Report()
+            relatorio = Report(repo=repo)
             relatorio.run()
         await channel.send("📊 Relatório gerado com sucesso!")
 
