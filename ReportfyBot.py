@@ -78,7 +78,7 @@ async def on_ready():
             entradas = ['0', '']# '0' para todos, '' para sair
             with patch('builtins.input', side_effect=lambda _: entradas.pop(0) if entradas else ''):
                 relatorio = Report()
-                 try:
+                try:
                     relatorio.run()
                 except SystemExit:  # Reportify chama exit() ao não haver seleção
                     await channel.send("⚠️ Nenhuma seleção feita, mas continuando para leitura do relatório...")
@@ -122,6 +122,7 @@ async def on_ready():
         await bot.close()
 
 bot.run(TOKEN)
+
 
 
 
