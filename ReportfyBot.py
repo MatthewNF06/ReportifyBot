@@ -76,7 +76,7 @@ async def on_ready():
         # === 1️⃣ Gera relatório ===
         entradas = ['0', '']  # '0' para todos, '' para sair
         def run_report():
-            with patch('builtins.input', side_effect=lambda _: '0':
+            with patch('builtins.input', side_effect=lambda _: '0'):
                 relatorio = Report()
                 relatorio.run()
         
@@ -117,6 +117,7 @@ async def on_ready():
         await bot.close()
 
 bot.run(TOKEN)
+
 
 
 
