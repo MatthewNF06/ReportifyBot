@@ -48,7 +48,7 @@ def ler_ultimo_arquivo_md():
 
 # Função para gerar resumo via Gemini API
 def gerar_resposta_gemini(pergunta):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     data = {
         "contents": [{"parts":[{"text": pergunta}]}]
@@ -122,6 +122,7 @@ async def on_ready():
         await bot.close()
 
 bot.run(TOKEN)
+
 
 
 
