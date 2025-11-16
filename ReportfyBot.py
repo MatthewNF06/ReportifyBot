@@ -129,7 +129,3 @@ bot.run(TOKEN)
 #Gustavo: Colocando um comentario! 
 #Rafael: Colocando um comentario melhor que o do Gustavo 
 #David: Mensagem Lida.
-
-
-
-
