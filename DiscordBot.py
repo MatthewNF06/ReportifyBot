@@ -149,6 +149,12 @@ def ler_ultimo_arquivo_md():
 
 
 async def mandar_imagens_b64(channel, list_b64):
+    await channel.send("📊 Enviando gráficos encontrados no relatório:" \
+            "Os graficos a seguir seguem 2 formatos: sendo o de cima:" \
+            "Um grafico em barras da comparação do prometido vs entregue por desenvolvedor;" \
+            "E o de baixo um grafico de linhas a quantidade de Issues fechadas nos ultimos 15 dias."
+                               )
+    
     for i, img64 in enumerate(list_b64):
         try:
             # Decoda cada imagem em formato de base64 para bytes puros
@@ -161,8 +167,11 @@ async def mandar_imagens_b64(channel, list_b64):
             arqui_disc = discord.File(
                 fp=buf,
                 filename=f"grafico_{i+1}.png")
-
+           
+          #  if i % 2 == 0:
+             #   await channel.send(f"Grafico do densenvolvedor {i//2 +1} ")
             await channel.send(f"Grafico {i+1}/{len(list_b64)}:",file=arqui_disc)
+           
         except Exception as e:
             print(f"Erro ao enviar o gráfico {i+1}: {e}")
 
