@@ -1,4 +1,6 @@
 import discord
+from discord.ext import commands
+# linha nova em cima
 import os
 import requests
 import asyncio
@@ -13,6 +15,9 @@ import glob
 from PIL import Image
 # Supondo que sua classe Report esteja aqui mesmo no WSL
 from reportify import Report  # ou from reportify.report import Report, se estiver em arquivo separado
+
+intents = discord.Intents.default()
+intents.members = True
 
 load_dotenv()
 
