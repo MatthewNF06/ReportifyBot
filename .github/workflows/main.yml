@@ -1,9 +1,9 @@
 name: ReportifyBot Run
 
 on:
-  workflow_dispatch:   # permite rodar manualmente pelo GitHub
+  workflow_dispatch:
   schedule:
-    - cron: "0 19 * * *"   # roda todo dia às 12h UTC (opcional, pode apagar se não quiser agendar)
+    - cron: "0 19 * * *"   # roda todo dia às 19h UTC (opcional)
 
 jobs:
   run-bot:
@@ -23,11 +23,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Rodar bot (relatório + resumo)
+      - name: Rodar bot (relatório + resumo + mensagens privadas)
         env:
           MY_API_REPORTFY: ${{ secrets.DISCORD_BOT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+          DISCORD_TARGET_USERS: ${{ secrets.DISCORD_TARGET_USERS }}
+          GITHUB_USERS_MAP: ${{ secrets.GITHUB_USERS_MAP }}
           GITHUB_TOKEN: ${{ secrets.REPORTFY_GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ secrets.REPOSITORY }}
           
