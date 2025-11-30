@@ -6,25 +6,46 @@ from unittest.mock import patch
 from pathlib import Path
 import requests
 
-# === Import do Reportify ===
+# Import do Reportify
 from reportify import Report
 
-# === Variáveis de ambiente ===
+# === Variáveis de Ambiente ===
 TOKEN = os.getenv("MY_API_REPORTFY")
+CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Lista de usuários do Discord (separados por vírgula)
-TARGET_USERS = [x.strip() for x in os.getenv("DISCORD_TARGET_USERS", "").split(",") if x.strip()]
-
+# Bot
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ----------------------------------------------------------
-# FUNÇÃO PARA LER O ÚLTIMO RELATÓRIO
-# ----------------------------------------------------------
+
+# ============================================================
+# 📨 Função para enviar mensagens no canal e no privado (DM)
+# ============================================================
+async def enviar_status(bot, channel_id, mensagem):
+    # Mandar no canal do servidor
+    canal = bot.get_channel(channel_id)
+    if canal:
+        await canal.send(mensagem)
+
+    # Mandar no privado para usuários configurados
+    usuarios_str = os.getenv("DISCORD_TARGET_USERS", "")
+    if usuarios_str.strip():
+        ids = [u.strip() for u in usuarios_str.split(",") if u.strip().isdigit()]
+        for user_id in ids:
+            try:
+                user = await bot.fetch_user(int(user_id))
+                await user.send(mensagem)
+            except Exception as e:
+                print(f"Erro ao enviar DM para {user_id}: {e}")
+
+
+# ============================================================
+# 📄 Ler último relatório MD gerado pelo Reportify
+# ============================================================
 def ler_ultimo_arquivo_md():
     reports_path = Path("./Reports")
-    if not reports_path.exists():
+    if not reports_path.exists() or not reports_path.is_dir():
         return None
 
     report_dirs = sorted(
@@ -51,14 +72,15 @@ def ler_ultimo_arquivo_md():
 
     return "\n".join(contents) if contents else None
 
-# ----------------------------------------------------------
-# FUNÇÃO GEMINI
-# ----------------------------------------------------------
+
+# ============================================================
+# 🤖 Função para gerar texto via API Gemini
+# ============================================================
 def gerar_resposta_gemini(pergunta):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     data = {
-        "contents": [{"parts":[{"text": pergunta}]}]
+        "contents": [{"parts": [{"text": pergunta}]}]
     }
 
     response = requests.post(url, headers=headers, json=data)
@@ -67,87 +89,85 @@ def gerar_resposta_gemini(pergunta):
         try:
             return response.json()['candidates'][0]['content']['parts'][0]['text']
         except Exception:
-            return "⚠️ Não consegui interpretar a resposta da IA."
+            return "⚠️ Não consegui entender a resposta da IA."
     else:
         print(response.text)
         return f"❌ Erro na API: {response.status_code}"
 
-# ----------------------------------------------------------
-# AO INICIAR O BOT → EXECUTA TUDO AUTOMATICAMENTE
-# ----------------------------------------------------------
+
+# ============================================================
+# 🚀 Fluxo principal do bot
+# ============================================================
 @bot.event
 async def on_ready():
-    print(f"🔗 Bot conectado como {bot.user}")
-    print("🚀 Iniciando pipeline de relatório...")
+    print(f"Bot conectado como {bot.user}")
+
+    # Notificar que está começando
+    await enviar_status(bot, CHANNEL_ID, "🚀 Iniciando geração de relatório...")
 
     try:
-        # ===== 1️⃣ GERA RELATÓRIO DO REPORTIFY =====
+        # ----------------------------------------------------
+        # 1️⃣ GERA O RELATÓRIO AUTOMATICAMENTE
+        # ----------------------------------------------------
         def run_report():
-            entradas = ['0', '']  # '0' = todos os devs
+            entradas = ['0', '']  # '0' para todos, '' para confirmar saída
             with patch('builtins.input', side_effect=lambda _: entradas.pop(0) if entradas else ''):
                 relatorio = Report()
                 try:
                     relatorio.run()
                 except SystemExit:
-                    pass
-        
-        await asyncio.to_thread(run_report)
-        print("📊 Relatório gerado com sucesso!")
+                    print("⚠️ Reportify finalizou sem seleção, continuando...")
+                except Exception as e:
+                    print(f"⚠️ Erro no Reportify.run(): {e}")
 
-        # ===== 2️⃣ LÊ ARQUIVOS GERADOS =====
+        await asyncio.to_thread(run_report)
+        await enviar_status(bot, CHANNEL_ID, "📊 Relatório gerado com sucesso!")
+
+
+        # ----------------------------------------------------
+        # 2️⃣ LER O ARQUIVO DE RELATÓRIO
+        # ----------------------------------------------------
         markdown = ler_ultimo_arquivo_md()
         if not markdown:
-            print("❌ Nenhum arquivo .md encontrado.")
+            await enviar_status(bot, CHANNEL_ID, "⚠️ Nenhum relatório encontrado.")
             await bot.close()
             return
 
-        # ===== 3️⃣ PREPARA PROMPT PARA A IA =====
+
+        # ----------------------------------------------------
+        # 3️⃣ GERAR O RESUMO VIA GEMINI
+        # ----------------------------------------------------
         prompt = (
             "Você receberá estatísticas individuais de desenvolvedores de um projeto. "
-            "Para cada desenvolvedor, gere um resumo separado (PT-BR) contendo:\n"
-            "- Prometido vs. Entregue\n"
-            "- Throughput (issues fechadas)\n"
-            "- Nome destacado em colchetes []\n"
+            "Para cada desenvolvedor, gere um resumo separado (em Português-BR) contendo:\n"
+            "- Prometido vs. Realizado (se disponível)\n"
+            "- Throughput (quantas issues fechadas)\n"
+            "- O nome dentro de uma [] no relatório\n"
             "- Issues abertas ou atribuídas\n"
-            "- Observações relevantes\n\n"
-            "Aqui estão os dados:\n\n" + markdown
+            "- Observações sobre padrão de contribuição\n\n"
+            "Aqui estão os dados completos:\n\n" + markdown
         )
 
-        print("🧠 Chamando Gemini...")
+        await enviar_status(bot, CHANNEL_ID, "📝 Gerando resumo com a IA Gemini...")
         resumo = gerar_resposta_gemini(prompt)
 
-        # ===== 4️⃣ ENVIA PARA CADA USUÁRIO VIA DM =====
-        print("📨 Enviando relatórios...")
+        # Enviar resumo em partes (limite 2000 caracteres)
+        for i in range(0, len(resumo), 2000):
+            await enviar_status(bot, CHANNEL_ID, resumo[i:i+2000])
 
-        for discord_id in TARGET_USERS:
-            try:
-                user = await bot.fetch_user(int(discord_id))
-                if user is None:
-                    print(f"⚠️ Usuário {discord_id} não encontrado.")
-                    continue
 
-                # Envia relatório bruto
-                await user.send("📊 **Seu relatório individual foi gerado!**")
-                for i in range(0, len(markdown), 1900):
-                    await user.send(markdown[i:i+1900])
+        # ----------------------------------------------------
+        # 4️⃣ FINALIZAÇÃO
+        # ----------------------------------------------------
+        await enviar_status(bot, CHANNEL_ID, "✅ Processo concluído: relatório + resumo enviados!")
 
-                # Envia resumo da IA
-                await user.send("📝 **Resumo personalizado da IA:**")
-                for i in range(0, len(resumo), 1900):
-                    await user.send(resumo[i:i+1900])
-
-                print(f"✅ Relatório enviado para {discord_id}")
-
-            except Exception as e:
-                print(f"❌ Erro ao enviar DM para {discord_id}: {e}")
 
     except Exception as e:
-        print(f"❌ Erro durante execução: {e}")
+        await enviar_status(bot, CHANNEL_ID, f"❌ Erro durante execução: {e}")
+
     finally:
-        print("🏁 Finalizado. Encerrando bot.")
         await bot.close()
 
-# ----------------------------------------------------------
-# INICIA O BOT
-# ----------------------------------------------------------
+
+# Executar o bot
 bot.run(TOKEN)
