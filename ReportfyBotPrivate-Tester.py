@@ -4,21 +4,17 @@ from discord.ext import commands
 import asyncio
 from unittest.mock import patch
 from pathlib import Path
-import json
 import requests
 
 # === Import do Reportify ===
 from reportify import Report
 
-# === Carrega variáveis do .env ===
+# === Variáveis de ambiente ===
 TOKEN = os.getenv("MY_API_REPORTFY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Discord IDs separados por vírgula
-TARGET_USERS = os.getenv("DISCORD_TARGET_USERS", "").split(",")
-
-# Mapeamento GitHub → Discord (JSON)
-GITHUB_TO_DISCORD = json.loads(os.getenv("GIT_USERS_MAP", "{}"))
+# Lista de usuários do Discord (separados por vírgula)
+TARGET_USERS = [x.strip() for x in os.getenv("DISCORD_TARGET_USERS", "").split(",") if x.strip()]
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -28,7 +24,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # ----------------------------------------------------------
 def ler_ultimo_arquivo_md():
     reports_path = Path("./Reports")
-    if not reports_path.exists() or not reports_path.is_dir():
+    if not reports_path.exists():
         return None
 
     report_dirs = sorted(
@@ -55,7 +51,6 @@ def ler_ultimo_arquivo_md():
 
     return "\n".join(contents) if contents else None
 
-
 # ----------------------------------------------------------
 # FUNÇÃO GEMINI
 # ----------------------------------------------------------
@@ -76,7 +71,6 @@ def gerar_resposta_gemini(pergunta):
     else:
         print(response.text)
         return f"❌ Erro na API: {response.status_code}"
-
 
 # ----------------------------------------------------------
 # AO INICIAR O BOT → EXECUTA TUDO AUTOMATICAMENTE
@@ -123,13 +117,9 @@ async def on_ready():
         resumo = gerar_resposta_gemini(prompt)
 
         # ===== 4️⃣ ENVIA PARA CADA USUÁRIO VIA DM =====
-        print("📨 Enviando relatórios individuais...")
+        print("📨 Enviando relatórios...")
 
         for discord_id in TARGET_USERS:
-            discord_id = discord_id.strip()
-            if discord_id == "":
-                continue
-
             try:
                 user = await bot.fetch_user(int(discord_id))
                 if user is None:
@@ -156,7 +146,6 @@ async def on_ready():
     finally:
         print("🏁 Finalizado. Encerrando bot.")
         await bot.close()
-
 
 # ----------------------------------------------------------
 # INICIA O BOT
