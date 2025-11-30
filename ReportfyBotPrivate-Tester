@@ -18,7 +18,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TARGET_USERS = os.getenv("DISCORD_TARGET_USERS", "").split(",")
 
 # Mapeamento GitHub → Discord (JSON)
-GITHUB_TO_DISCORD = json.loads(os.getenv("GITHUB_USERS_MAP", "{}"))
+GITHUB_TO_DISCORD = json.loads(os.getenv("GIT_USERS_MAP", "{}"))
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
