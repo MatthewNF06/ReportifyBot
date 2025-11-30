@@ -1,0 +1,164 @@
+import os
+import discord
+from discord.ext import commands
+import asyncio
+from unittest.mock import patch
+from pathlib import Path
+import json
+import requests
+
+# === Import do Reportify ===
+from reportify import Report
+
+# === Carrega variáveis do .env ===
+TOKEN = os.getenv("MY_API_REPORTFY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Discord IDs separados por vírgula
+TARGET_USERS = os.getenv("DISCORD_TARGET_USERS", "").split(",")
+
+# Mapeamento GitHub → Discord (JSON)
+GITHUB_TO_DISCORD = json.loads(os.getenv("GITHUB_USERS_MAP", "{}"))
+
+intents = discord.Intents.default()
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+# ----------------------------------------------------------
+# FUNÇÃO PARA LER O ÚLTIMO RELATÓRIO
+# ----------------------------------------------------------
+def ler_ultimo_arquivo_md():
+    reports_path = Path("./Reports")
+    if not reports_path.exists() or not reports_path.is_dir():
+        return None
+
+    report_dirs = sorted(
+        [p for p in reports_path.iterdir() if p.is_dir()],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+
+    if not report_dirs:
+        return None
+
+    latest_dir = report_dirs[0]
+    md_files = list(latest_dir.glob("developer_stats_*.md"))
+    if not md_files:
+        return None
+
+    contents = []
+    for md_file in md_files:
+        try:
+            with open(md_file, "r", encoding="utf-8") as f:
+                contents.append(f"## {md_file.stem}\n\n{f.read()}\n")
+        except Exception as e:
+            print(f"Erro ao ler {md_file}: {e}")
+
+    return "\n".join(contents) if contents else None
+
+
+# ----------------------------------------------------------
+# FUNÇÃO GEMINI
+# ----------------------------------------------------------
+def gerar_resposta_gemini(pergunta):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "contents": [{"parts":[{"text": pergunta}]}]
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code == 200:
+        try:
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        except Exception:
+            return "⚠️ Não consegui interpretar a resposta da IA."
+    else:
+        print(response.text)
+        return f"❌ Erro na API: {response.status_code}"
+
+
+# ----------------------------------------------------------
+# AO INICIAR O BOT → EXECUTA TUDO AUTOMATICAMENTE
+# ----------------------------------------------------------
+@bot.event
+async def on_ready():
+    print(f"🔗 Bot conectado como {bot.user}")
+    print("🚀 Iniciando pipeline de relatório...")
+
+    try:
+        # ===== 1️⃣ GERA RELATÓRIO DO REPORTIFY =====
+        def run_report():
+            entradas = ['0', '']  # '0' = todos os devs
+            with patch('builtins.input', side_effect=lambda _: entradas.pop(0) if entradas else ''):
+                relatorio = Report()
+                try:
+                    relatorio.run()
+                except SystemExit:
+                    pass
+        
+        await asyncio.to_thread(run_report)
+        print("📊 Relatório gerado com sucesso!")
+
+        # ===== 2️⃣ LÊ ARQUIVOS GERADOS =====
+        markdown = ler_ultimo_arquivo_md()
+        if not markdown:
+            print("❌ Nenhum arquivo .md encontrado.")
+            await bot.close()
+            return
+
+        # ===== 3️⃣ PREPARA PROMPT PARA A IA =====
+        prompt = (
+            "Você receberá estatísticas individuais de desenvolvedores de um projeto. "
+            "Para cada desenvolvedor, gere um resumo separado (PT-BR) contendo:\n"
+            "- Prometido vs. Entregue\n"
+            "- Throughput (issues fechadas)\n"
+            "- Nome destacado em colchetes []\n"
+            "- Issues abertas ou atribuídas\n"
+            "- Observações relevantes\n\n"
+            "Aqui estão os dados:\n\n" + markdown
+        )
+
+        print("🧠 Chamando Gemini...")
+        resumo = gerar_resposta_gemini(prompt)
+
+        # ===== 4️⃣ ENVIA PARA CADA USUÁRIO VIA DM =====
+        print("📨 Enviando relatórios individuais...")
+
+        for discord_id in TARGET_USERS:
+            discord_id = discord_id.strip()
+            if discord_id == "":
+                continue
+
+            try:
+                user = await bot.fetch_user(int(discord_id))
+                if user is None:
+                    print(f"⚠️ Usuário {discord_id} não encontrado.")
+                    continue
+
+                # Envia relatório bruto
+                await user.send("📊 **Seu relatório individual foi gerado!**")
+                for i in range(0, len(markdown), 1900):
+                    await user.send(markdown[i:i+1900])
+
+                # Envia resumo da IA
+                await user.send("📝 **Resumo personalizado da IA:**")
+                for i in range(0, len(resumo), 1900):
+                    await user.send(resumo[i:i+1900])
+
+                print(f"✅ Relatório enviado para {discord_id}")
+
+            except Exception as e:
+                print(f"❌ Erro ao enviar DM para {discord_id}: {e}")
+
+    except Exception as e:
+        print(f"❌ Erro durante execução: {e}")
+    finally:
+        print("🏁 Finalizado. Encerrando bot.")
+        await bot.close()
+
+
+# ----------------------------------------------------------
+# INICIA O BOT
+# ----------------------------------------------------------
+bot.run(TOKEN)
