@@ -15,6 +15,11 @@ import glob
 from PIL import Image
 # Supondo que sua classe Report esteja aqui mesmo no WSL
 from reportify import Report  # ou from reportify.report import Report, se estiver em arquivo separado
+import json 
+
+caminho_arquivo = "developers.json"
+with open(caminho_arquivo, "r", encoding="utf-8") as f:
+    dados = json.load(f)
 
 intents = discord.Intents.default()
 intents.members = True
@@ -73,49 +78,92 @@ class MyClient(discord.Client):
                 await message.channel.send('Relatorio Gerado com sucesso! e Prompt de comando reiniciada!')
 
         elif message.content.startswith('!resumo'):
+            authorized_users = os.getenv("Discord_IDs") # Substitua pelos IDs reais dos usuários autorizados
+            usuarios_lista =[i.strip() for i in authorized_users.split(",") if i.strip().isdigit()]
             try:
-                markdown = ler_ultimo_arquivo_md()
-                if not markdown:
-                    await message.channel.send("⚠️ Nenhum relatório encontrado.")
-                    return
-                
+                    markdown = ler_ultimo_arquivo_md()
+                    if not markdown:
+                        await message.channel.send("⚠️ Nenhum relatório encontrado.")
+                        return
+                    
 
-                regex_base64 = r'data:image/png;base64,(.+?)\)'
-                imgs_b64 = re.findall(regex_base64,markdown)
+                    regex_base64 = r'data:image/png;base64,(.+?)\)'
+                    imgs_b64 = re.findall(regex_base64,markdown)
 
-                if imgs_b64: await mandar_imagens_b64(message.channel,imgs_b64)
+                    if imgs_b64: await mandar_imagens_b64(message.channel,imgs_b64)
 
-        
-                await message.channel.send("📄 Gerando resumo com a IA...")
+            
+                    await message.channel.send("📄 Gerando resumo com a IA...")
 
 
-                prompt =(
-                    "Você receberá estatísticas individuais de desenvolvedores de um projeto. "
-                    "Para cada desenvolvedor, gere um resumo separado (em Portugues-BR) contendo:\n"
-                    "- Prometido vs. Realizado (se disponível)\n"
-                    "- Throughput (quantas issues fechadas)\n"
-                    "- O nome dentro de uma [] no relatorio, para destacar\n"
-                    "- Quais issues ele abriu ou está responsável\n"
-                    "- Observações sobre atividade, papel no projeto ou padrão de contribuição\n\n"
-                    "Aqui estão os dados:\n\n" + markdown
-                )
-                resposta = await gerar_resposta_gemini(prompt)  # ✅ certo
+                    prompt =(
+                        "Você receberá estatísticas individuais de desenvolvedores de um projeto. "
+                        "Para cada desenvolvedor, gere um resumo separado (em Portugues-BR) contendo:\n"
+                        "- Prometido vs. Realizado (se disponível)\n"
+                        "- Throughput (quantas issues fechadas)\n"
+                        "- O nome dentro de uma [] no relatorio, para destacar\n"
+                        "- Quais issues ele abriu ou está responsável\n"
+                        "- Observações sobre atividade, papel no projeto ou padrão de contribuição\n\n"
+                        "Aqui estão os dados:\n\n" + markdown
+                    )
+                    resposta = await gerar_resposta_gemini(prompt)  # ✅ certo
+                    for user_id in usuarios_lista:
+                        try:
+                                user = await self.fetch_user(int(user_id))
+                        except Exception as e:
+                                print(f"Erro ao buscar o usuário {user_id}: {e}")
+                                continue
+                        try:
+                            if imgs_b64: await mandar_imagens_b64(user,imgs_b64)
+                            await user.send("📄 Gerando resumo com a IA...")
+                            await self.send_long_message(user, resposta) 
+                            await user.send("RESUMO GERADO! 📄🤖")
+                        except Exception as e:
+                            await user.send(f"❌ Erro ao gerar resumo: {e}")
+                    
 
-                await self.send_long_message(message.channel, resposta)
-                await message.channel.send("RESUMO GERADO! 📄🤖")
+                    await self.send_long_message(message.channel, resposta)
+                    await message.channel.send("RESUMO GERADO! 📄🤖")
             except Exception as e:
-                await message.channel.send(f"❌ Erro ao gerar resumo: {e}")
+                    await message.channel.send(f"❌ Erro ao gerar resumo: {e}")
 
-        elif message.content.startswith('!imagem'):
-            url = 'https://imgur.com/a/sWzmcuM'
-            await message.channel.send(f"Imagem a ser analisada: {url}")
-            await message.channel.send("⏳ Analisando imagem com a IA...")
-            prompt = ("analisar a imagem no link fornecido e descrever seu conteúdo detalhadamente."
-            "(focando apenas no grafico contido no meio)" 
-            "(Saiba que nesse grafico as lacunas de cor azul representam o prometido e as verdes representam o entregue) " 
-            f": {url} ")
-            resposta = await gerar_resposta_gemini(prompt)
-            await self.send_long_message(message.channel, resposta)
+        #Mandar no privado para usuários configurados   
+        elif message.content.startswith('!private'):
+            authorized_users = os.getenv("Discord_IDs") # Substitua pelos IDs reais dos usuários autorizados
+            usuarios_lista =[i.strip() for i in authorized_users.split(",") if i.strip().isdigit()]
+            usuarios_lista = [int(i) for i in usuarios_lista]
+            if message.author.id in usuarios_lista:
+                try:
+                    markdown = ler_ultimo_arquivo_md()
+                    if not markdown:
+                        await message.author.send("⚠️ Nenhum relatório encontrado.")
+                        return
+
+                    regex_base64 = r'data:image/png;base64,(.+?)\)'
+                    imgs_b64 = re.findall(regex_base64,markdown)
+
+                    if imgs_b64: await mandar_imagens_b64(message.author,imgs_b64)
+
+                    await message.author.send("📄 Gerando resumo com a IA...")
+
+                    prompt =(
+                        "Você receberá estatísticas individuais de desenvolvedores de um projeto. "
+                        "Para cada desenvolvedor, gere um resumo separado (em Portugues-BR) contendo:\n"
+                        "- Prometido vs. Realizado (se disponível)\n"
+                        "- Throughput (quantas issues fechadas)\n"
+                        "- O nome dentro de uma [] no relatorio, para destacar\n"
+                        "- Quais issues ele abriu ou está responsável\n"
+                        "- Observações sobre atividade, papel no projeto ou padrão de contribuição\n\n"
+                        "Aqui estão os dados:\n\n" + markdown
+                    )
+                    resposta = await gerar_resposta_gemini(prompt)  # ✅ certo
+
+                    await self.send_long_message(message.author, resposta)
+                    await message.author.send("RESUMO GERADO! 📄🤖")
+                except Exception as e:
+                    await message.author.send(f"❌ Erro ao gerar resumo: {e}")
+            else:
+                await message.channel.send("❌ Você não tem permissão para usar este comando.")
 
 # Função para encontrar a pasta mais recente na pasta Reports
 def ler_ultimo_arquivo_md():
