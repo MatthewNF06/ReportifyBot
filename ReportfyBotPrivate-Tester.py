@@ -21,10 +21,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-
-# ============================================================
 # 📨 Função para enviar mensagens no canal e no privado
-# ============================================================
 async def enviar_status(bot, channel_id, mensagem):
     # Mandar no canal do servidor
     canal = bot.get_channel(channel_id)
@@ -42,10 +39,7 @@ async def enviar_status(bot, channel_id, mensagem):
             except Exception as e:
                 print(f"Erro ao enviar DM para {user_id}: {e}")
 
-
-# ============================================================
 # 📄 Ler último relatório MD
-# ============================================================
 def ler_ultimo_arquivo_md():
     reports_path = Path("./Reports")
     if not reports_path.exists() or not reports_path.is_dir():
@@ -76,9 +70,8 @@ def ler_ultimo_arquivo_md():
     return "\n".join(contents) if contents else None
 
 
-# ============================================================
-# 📤 Novo: enviar imagens base64 do Relatório
-# ============================================================
+
+# Enviar imagens base64 do Relatório
 async def mandar_imagens_b64(destino, list_b64):
     await destino.send(
         "📊 Enviando gráficos do relatório...\n"
@@ -101,10 +94,7 @@ async def mandar_imagens_b64(destino, list_b64):
         except Exception as e:
             print(f"Erro ao enviar gráfico {i+1}: {e}")
 
-
-# ============================================================
-# 🤖 GEMINI
-# ============================================================
+# 🤖 GEMINI (Uso da Api)
 def gerar_resposta_gemini(pergunta):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
@@ -124,9 +114,8 @@ def gerar_resposta_gemini(pergunta):
         return f"❌ Erro na API: {response.status_code}"
 
 
-# ============================================================
+
 # 🚀 Fluxo principal
-# ============================================================
 @bot.event
 async def on_ready():
     print(f"Bot conectado como {bot.user}")
@@ -179,12 +168,14 @@ async def on_ready():
 
         # 3️⃣ Gerar resumo
         prompt = (
-            "Você receberá estatísticas de desenvolvedores. Explique cada dev separadamente:\n"
-            "- Prometido vs Realizado\n"
-            "- Throughput\n"
-            "- Issues abertas/atribuídas\n"
-            "- Observações\n\n"
-            "Dados:\n\n" + markdown
+             "Você receberá estatísticas individuais de desenvolvedores de um projeto. "
+            "Para cada desenvolvedor, gere um resumo separado (em Portugues-BR) contendo:\n"
+            "- Prometido vs. Realizado (se disponível)\n"
+            "- Throughput (quantas issues fechadas)\n"
+            "- O nome dentro de uma [] no relatorio, para destacar\n"
+            "- Quais issues ele abriu ou está responsável\n"
+            "- Observações sobre atividade, papel no projeto ou padrão de contribuição\n\n"
+            "Aqui estão os dados:\n\n" + markdown
         )
 
         await enviar_status(bot, CHANNEL_ID, "📝 Gerando resumo com a IA Gemini...")
