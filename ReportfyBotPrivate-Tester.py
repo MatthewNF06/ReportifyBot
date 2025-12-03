@@ -5,6 +5,9 @@ import asyncio
 from unittest.mock import patch
 from pathlib import Path
 import requests
+import re
+import base64
+import io
 
 # Import do Reportify
 from reportify import Report
@@ -20,7 +23,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 # ============================================================
-# 📨 Função para enviar mensagens no canal e no privado (DM)
+# 📨 Função para enviar mensagens no canal e no privado
 # ============================================================
 async def enviar_status(bot, channel_id, mensagem):
     # Mandar no canal do servidor
@@ -41,7 +44,7 @@ async def enviar_status(bot, channel_id, mensagem):
 
 
 # ============================================================
-# 📄 Ler último relatório MD gerado pelo Reportify
+# 📄 Ler último relatório MD
 # ============================================================
 def ler_ultimo_arquivo_md():
     reports_path = Path("./Reports")
@@ -74,7 +77,33 @@ def ler_ultimo_arquivo_md():
 
 
 # ============================================================
-# 🤖 Função para gerar texto via API Gemini
+# 📤 Novo: enviar imagens base64 do Relatório
+# ============================================================
+async def mandar_imagens_b64(destino, list_b64):
+    await destino.send(
+        "📊 Enviando gráficos do relatório...\n"
+        "• Gráfico 1: Barras — Prometido vs Entregue\n"
+        "• Gráfico 2: Linhas — Issues fechadas nos últimos 15 dias"
+    )
+
+    for i, img64 in enumerate(list_b64):
+        try:
+            img_bytes = base64.b64decode(img64)
+            buf = io.BytesIO(img_bytes)
+
+            arquivo = discord.File(
+                fp=buf,
+                filename=f"grafico_{i+1}.png"
+            )
+
+            await destino.send(f"📈 Gráfico {i+1}/{len(list_b64)}:", file=arquivo)
+
+        except Exception as e:
+            print(f"Erro ao enviar gráfico {i+1}: {e}")
+
+
+# ============================================================
+# 🤖 GEMINI
 # ============================================================
 def gerar_resposta_gemini(pergunta):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
@@ -96,71 +125,77 @@ def gerar_resposta_gemini(pergunta):
 
 
 # ============================================================
-# 🚀 Fluxo principal do bot
+# 🚀 Fluxo principal
 # ============================================================
 @bot.event
 async def on_ready():
     print(f"Bot conectado como {bot.user}")
 
-    # Notificar que está começando
     await enviar_status(bot, CHANNEL_ID, "🚀 Iniciando geração de relatório...")
 
     try:
-        # ----------------------------------------------------
-        # 1️⃣ GERA O RELATÓRIO AUTOMATICAMENTE
-        # ----------------------------------------------------
+        # 1️⃣ Gera relatório
         def run_report():
-            entradas = ['0', '']  # '0' para todos, '' para confirmar saída
+            entradas = ['0', '']
             with patch('builtins.input', side_effect=lambda _: entradas.pop(0) if entradas else ''):
                 relatorio = Report()
                 try:
                     relatorio.run()
                 except SystemExit:
-                    print("⚠️ Reportify finalizou sem seleção, continuando...")
+                    pass
                 except Exception as e:
-                    print(f"⚠️ Erro no Reportify.run(): {e}")
+                    print(f"Erro no Reportify.run(): {e}")
 
         await asyncio.to_thread(run_report)
         await enviar_status(bot, CHANNEL_ID, "📊 Relatório gerado com sucesso!")
 
 
-        # ----------------------------------------------------
-        # 2️⃣ LER O ARQUIVO DE RELATÓRIO
-        # ----------------------------------------------------
+        # 2️⃣ Ler o MD
         markdown = ler_ultimo_arquivo_md()
         if not markdown:
             await enviar_status(bot, CHANNEL_ID, "⚠️ Nenhum relatório encontrado.")
             await bot.close()
             return
 
+        # ---------- EXTRAIR IMAGENS BASE64 ----------
+        regex_base64 = r"data:image/png;base64,([^)\s]+)"
+        imgs_b64 = re.findall(regex_base64, markdown)
 
-        # ----------------------------------------------------
-        # 3️⃣ GERAR O RESUMO VIA GEMINI
-        # ----------------------------------------------------
+        if imgs_b64:
+            # Mandar para o canal
+            canal = bot.get_channel(CHANNEL_ID)
+            if canal:
+                await mandar_imagens_b64(canal, imgs_b64)
+
+            # Mandar para os usuários privados
+            usuarios_str = os.getenv("DISCORD_TARGET_USERS", "")
+            ids = [u.strip() for u in usuarios_str.split(",") if u.strip().isdigit()]
+            for user_id in ids:
+                try:
+                    user = await bot.fetch_user(int(user_id))
+                    await mandar_imagens_b64(user, imgs_b64)
+                except Exception as e:
+                    print(f"Erro ao enviar imagens para {user_id}: {e}")
+
+        # 3️⃣ Gerar resumo
         prompt = (
-            "Você receberá estatísticas individuais de desenvolvedores de um projeto. "
-            "Para cada desenvolvedor, gere um resumo separado (em Português-BR) contendo:\n"
-            "- Prometido vs. Realizado (se disponível)\n"
-            "- Throughput (quantas issues fechadas)\n"
-            "- O nome dentro de uma [] no relatório\n"
-            "- Issues abertas ou atribuídas\n"
-            "- Observações sobre padrão de contribuição\n\n"
-            "Aqui estão os dados completos:\n\n" + markdown
+            "Você receberá estatísticas de desenvolvedores. Explique cada dev separadamente:\n"
+            "- Prometido vs Realizado\n"
+            "- Throughput\n"
+            "- Issues abertas/atribuídas\n"
+            "- Observações\n\n"
+            "Dados:\n\n" + markdown
         )
 
         await enviar_status(bot, CHANNEL_ID, "📝 Gerando resumo com a IA Gemini...")
         resumo = gerar_resposta_gemini(prompt)
 
-        # Enviar resumo em partes (limite 2000 caracteres)
+
+        # 4️⃣ Enviar resumo
         for i in range(0, len(resumo), 2000):
             await enviar_status(bot, CHANNEL_ID, resumo[i:i+2000])
 
-
-        # ----------------------------------------------------
-        # 4️⃣ FINALIZAÇÃO
-        # ----------------------------------------------------
-        await enviar_status(bot, CHANNEL_ID, "✅ Processo concluído: relatório + resumo enviados!")
-
+        await enviar_status(bot, CHANNEL_ID, "✅ Processo concluído com sucesso!")
 
     except Exception as e:
         await enviar_status(bot, CHANNEL_ID, f"❌ Erro durante execução: {e}")
@@ -169,5 +204,5 @@ async def on_ready():
         await bot.close()
 
 
-# Executar o bot
+# Executar bot
 bot.run(TOKEN)
